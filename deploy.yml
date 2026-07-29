@@ -5,6 +5,7 @@ on:
     branches:
       - main
 
+# 关键：OIDC 联邦所需的权限
 permissions:
   id-token: write
   contents: read
@@ -16,12 +17,47 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 调试步骤：获取并显示 OIDC Token 的 sub 声明
+      - name: 获取并显示 OIDC Token 的 sub 声明
+        run: |
+          echo "=== 获取 OIDC Token 信息 ==="
+          # 请求 OIDC Token，audience 需与 AWS OIDC Provider 中的一致
+          TOKEN_RESPONSE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
+          
+          # 从响应中提取 Token 值
+          TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.value')
+          
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "错误：无法获取 OIDC Token"
+            echo "完整响应：$TOKEN_RESPONSE"
+            exit 1
+          fi
+          
+          echo "成功获取 OIDC Token"
+          
+          # 解码 JWT Token 的 Payload 部分（第二段）
+          PAYLOAD=$(echo $TOKEN | cut -d. -f2)
+          
+          # 对 Payload 进行 Base64 解码并格式化显示
+          echo "=== OIDC Token 声明 (Claims) ==="
+          echo $PAYLOAD | base64 -d 2>/dev/null | jq .
+          
+          # 特别提取并高亮显示 sub 声明
+          SUB=$(echo $PAYLOAD | base64 -d 2>/dev/null | jq -r '.sub')
+          echo ""
+          echo "=== 关键信息：sub 声明 ==="
+          echo "sub: $SUB"
+          
+          # 将 sub 值写入环境变量，供后续步骤参考（可选）
+          echo "OIDC_SUB=$SUB" >> $GITHUB_ENV
+
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::142966787519:role/GitHub-OIDC-Role
           aws-region: us-east-1
-          # 注意：这里故意不指定 audience
+          # 注意：这里不指定 audience，让 GitHub 使用默认值
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
