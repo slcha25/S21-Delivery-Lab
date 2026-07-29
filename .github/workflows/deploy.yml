@@ -26,7 +26,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::142966787519:role/GitHub-OIDC-Role
           aws-region: us-east-1
-          audience: sts.amazonaws.com  # ← 显式指定 audience
+          audience: githubactions   # ← 显式指定 audience
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
