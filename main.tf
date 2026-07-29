@@ -1,9 +1,10 @@
-provider "aws" {  
-  region = "us-east-1"  
-}  
-  
-resource "aws_ssm_parameter" "drone_check" {  
-  name  = "/tkh/pipeline/status"  
-  type  = "String"  
-  value = "Deployment Drone Successful via OIDC"  
-}  
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "OIDC-Demo-VPC"
+  }
+}
