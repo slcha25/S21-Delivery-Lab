@@ -1,9 +1,11 @@
 name: Keyless Terraform Deploy
+
 on:
   push:
     branches:
       - main
 
+# 关键：OIDC 联邦所需的权限
 permissions:
   id-token: write
   contents: read
@@ -15,18 +17,28 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Debug OIDC Information
+      # 调试步骤：获取并显示 OIDC Token 的真实声明
+      - name: 获取并显示 OIDC Token 声明
         run: |
-          echo "GitHub Actor: ${{ github.actor }}"
-          echo "GitHub Repository: ${{ github.repository }}"
-          echo "GitHub Ref: ${{ github.ref }}"
+          echo "=== GitHub 上下文信息 ==="
+          echo "GITHUB_ACTOR: ${{ github.actor }}"
+          echo "GITHUB_REPOSITORY: ${{ github.repository }}"
+          echo "GITHUB_REF: ${{ github.ref }}"
+          echo "GITHUB_SHA: ${{ github.sha }}"
+          echo ""
+          echo "=== OIDC Token 声明 (sub) ==="
+          # 获取 OIDC Token 并解码其 payload 部分以查看声明
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=github-actions")
+          # 提取并解码 payload (JWT 的第二段)
+          echo $TOKEN | jq -r '.value' | cut -d. -f2 | base64 -d 2>/dev/null | jq . || echo "解码失败，请检查 jq 是否安装"
 
       - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4  # 升级到 v4
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::142966787519:role/GitHub-OIDC-Role
           aws-region: us-east-1
-          audience: githubactions   # ← 显式指定 audience
+          audience: github-actions   # 必须与 AWS OIDC Provider 中的 Audience 完全一致
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
