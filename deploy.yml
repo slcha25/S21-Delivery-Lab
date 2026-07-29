@@ -57,6 +57,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::142966787519:role/GitHub-OIDC-Role
           aws-region: us-east-1
+          audience: sts.amazonaws.com
           # 注意：这里不指定 audience，让 GitHub 使用默认值
 
       - name: Setup Terraform
